@@ -1,0 +1,16 @@
+# Build artifacts
+veemu-app/build/
+veemu-engine/build/
+veemu-api/veemu-apiserver
+
+# Logs
+logs/
+
+# Unicorn build artifacts
+veemu-engine/unicorn/build/
+
+# macOS
+.DS_Store
+
+# Go
+veemu-api/vendor/

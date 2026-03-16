@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Veemu — Virtual Embedded Workstation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+<style>
+:root {
+  --bg0: #0d0f11;
+  --bg1: #12151a;
+  --bg2: #181c23;
+  --bg3: #1e2330;
+  --bg4: #252b3a;
+  --amber: #f59e0b;
+  --amber2: #fbbf24;
+  --amber-dim: #92600a;
+  --green: #22c55e;
+  --green-dim: #14532d;
+  --red: #ef4444;
+  --red-dim: #7f1d1d;
+  --blue: #3b82f6;
+  --cyan: #06b6d4;
+  --text0: #e8eaf0;
+  --text1: #9aa3b5;
+  --text2: #5a6478;
+  --border: #252b3a;
+  --border2: #2e3548;
+  --glow-amber: 0 0 12px rgba(245,158,11,0.4);
+  --glow-green: 0 0 12px rgba(34,197,94,0.4);
+  --glow-red: 0 0 12px rgba(239,68,68,0.4);
+  --radius: 6px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg0); color:var(--text0); font-family:'JetBrains Mono',monospace; height:100vh; overflow:hidden; display:flex; flex-direction:column; }
+
+/* TOP BAR */
+.topbar { height:44px; background:var(--bg1); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 16px; gap:12px; flex-shrink:0; z-index:100; }
+.logo { font-family:'Syne',sans-serif; font-weight:800; font-size:18px; color:var(--amber); letter-spacing:-0.5px; display:flex; align-items:center; gap:8px; }
+.logo-dot { width:8px; height:8px; background:var(--amber); border-radius:50%; box-shadow:var(--glow-amber); animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+.sep { width:1px; height:20px; background:var(--border2); }
+.topbar-center { flex:1; display:flex; align-items:center; gap:8px; }
+.session-badge { font-size:10px; color:var(--text2); background:var(--bg3); border:1px solid var(--border2); padding:3px 8px; border-radius:3px; }
+.session-badge.active { color:var(--green); border-color:var(--green-dim); box-shadow:var(--glow-green); }
+.status-indicator { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text2); }
+.status-dot { width:6px; height:6px; border-radius:50%; background:var(--text2); }
+.status-dot.running { background:var(--green); box-shadow:var(--glow-green); animation:pulse 1.5s infinite; }
+.status-dot.error { background:var(--red); }
+.status-dot.booting { background:var(--amber); animation:pulse 0.8s infinite; }
+.topbar-right { display:flex; align-items:center; gap:6px; }
+.btn { height:28px; padding:0 12px; border:1px solid var(--border2); background:var(--bg3); color:var(--text1); font-family:'JetBrains Mono',monospace; font-size:11px; cursor:pointer; border-radius:var(--radius); display:flex; align-items:center; gap:6px; transition:all 0.15s; white-space:nowrap; }
+.btn:hover { background:var(--bg4); color:var(--text0); border-color:var(--text2); }
+.btn.primary { background:var(--amber-dim); border-color:var(--amber); color:var(--amber2); }
+.btn.primary:hover { background:var(--amber); color:var(--bg0); box-shadow:var(--glow-amber); }
+.btn.danger { background:var(--red-dim); border-color:var(--red); color:var(--red); }
+.btn.danger:hover { box-shadow:var(--glow-red); }
+.btn:disabled { opacity:0.4; cursor:not-allowed; }
+.btn svg { width:13px; height:13px; flex-shrink:0; }
+
+/* WORKSPACE */
+.workspace { flex:1; display:flex; overflow:hidden; min-height:0; }
+
+/* LEFT: EDITOR */
+.left-panel { width:420px; min-width:200px; max-width:80vw; display:flex; flex-direction:column; background:var(--bg1); border-right:1px solid var(--border); flex-shrink:0; overflow:hidden; }
+.panel-header { height:34px; background:var(--bg2); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 12px; gap:8px; font-size:10px; color:var(--text2); letter-spacing:0.08em; text-transform:uppercase; font-weight:500; flex-shrink:0; }
+.panel-icon { width:14px; height:14px; color:var(--amber); }
+.panel-title { color:var(--text1); }
+.panel-actions { margin-left:auto; display:flex; gap:6px; align-items:center; }
+
+.file-tree { flex-shrink:0; border-bottom:1px solid var(--border); overflow-y:auto; max-height:145px; }
+.file-tree::-webkit-scrollbar { width:4px; }
+.file-tree::-webkit-scrollbar-thumb { background:var(--border2); }
+.tree-item { display:flex; align-items:center; gap:8px; padding:5px 12px; font-size:11px; color:var(--text1); cursor:pointer; transition:background 0.1s; }
+.tree-item:hover { background:var(--bg3); }
+.tree-item.active { background:var(--bg4); color:var(--amber2); }
+.tree-item.folder { color:var(--amber); }
+.tree-item svg { width:12px; height:12px; flex-shrink:0; }
+.tree-indent { padding-left:24px; }
+
+.editor-wrap { flex:1; min-height:0; position:relative; }
+#monaco-editor { width:100%; height:100%; }
+.editor-footer { height:24px; background:var(--bg2); border-top:1px solid var(--border); display:flex; align-items:center; padding:0 10px; gap:8px; flex-shrink:0; font-size:9px; color:var(--text2); }
+
+/* VERTICAL DIVIDER */
+.vdivider { width:4px; background:var(--border); cursor:col-resize; flex-shrink:0; transition:background 0.15s; z-index:10; }
+.vdivider:hover, .vdivider.dragging { background:var(--amber); }
+
+/* RIGHT COLUMN */
+.right-col { flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden; }
+
+/* BOARD PANEL */
+.board-panel { flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+.board-area { flex:1; min-height:0; overflow:auto; background: radial-gradient(ellipse at 30% 30%, rgba(245,158,11,0.03) 0%, transparent 60%), repeating-linear-gradient(0deg,transparent,transparent 24px,rgba(255,255,255,0.012) 24px,rgba(255,255,255,0.012) 25px), repeating-linear-gradient(90deg,transparent,transparent 24px,rgba(255,255,255,0.012) 24px,rgba(255,255,255,0.012) 25px), var(--bg1); display:flex; align-items:flex-start; justify-content:center; padding:20px; gap:20px; }
+
+/* HORIZONTAL DIVIDER */
+.hdivider { height:4px; background:var(--border); cursor:row-resize; flex-shrink:0; transition:background 0.15s; z-index:10; }
+.hdivider:hover, .hdivider.dragging { background:var(--amber); }
+
+/* LOG PANEL */
+.log-panel { flex-shrink:0; display:flex; flex-direction:column; background:var(--bg1); border-top:1px solid var(--border); overflow:hidden; height:220px; min-height:28px; }
+
+/* TABS */
+.tab-bar { height:34px; background:var(--bg2); border-bottom:1px solid var(--border); display:flex; align-items:flex-end; padding:0 8px; gap:1px; flex-shrink:0; }
+.tab { height:28px; padding:0 14px; font-size:10px; color:var(--text2); cursor:pointer; border-radius:4px 4px 0 0; display:flex; align-items:center; gap:6px; transition:all 0.12s; border:1px solid transparent; border-bottom:none; letter-spacing:0.06em; text-transform:uppercase; }
+.tab:hover { color:var(--text1); background:var(--bg3); }
+.tab.active { color:var(--text0); background:var(--bg1); border-color:var(--border2); border-bottom-color:var(--bg1); }
+.tab.active.tbuild { color:var(--green); }
+.tab.active.tflash { color:var(--amber2); }
+.tab.active.tconsole { color:var(--cyan); }
+.tab-dot { width:5px; height:5px; border-radius:50%; background:currentColor; opacity:0.4; transition:opacity 0.2s; }
+.tab.has-data .tab-dot { opacity:1; }
+.tab-bar-right { margin-left:auto; display:flex; align-items:center; gap:6px; padding-bottom:3px; }
+
+.tab-pane { display:none; flex:1; min-height:0; flex-direction:column; }
+.tab-pane.active { display:flex; }
+
+/* LOG OUTPUT */
+.log-out { flex:1; min-height:0; overflow-y:auto; padding:6px 12px; font-size:11px; line-height:1.7; color:var(--text1); }
+.log-out::-webkit-scrollbar { width:4px; }
+.log-out::-webkit-scrollbar-thumb { background:var(--border2); }
+.log-line { display:flex; gap:10px; padding:0.5px 0; animation:li 0.08s ease; }
+@keyframes li { from{opacity:0;transform:translateY(1px)} to{opacity:1} }
+.log-ts { color:var(--text2); font-size:9px; flex-shrink:0; padding-top:2px; user-select:none; }
+.log-text { word-break:break-all; }
+.ok { color:var(--green); }
+.err { color:var(--red); }
+.warn { color:var(--amber); }
+.info { color:var(--cyan); }
+.cmd { color:var(--text2); font-style:italic; }
+.fl  { color:var(--amber2); }
+.log-empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--text2); font-size:10px; opacity:0.45; }
+
+/* CONSOLE */
+.con-out { flex:1; min-height:0; overflow-y:auto; padding:6px 12px; font-size:11px; line-height:1.65; }
+.con-out::-webkit-scrollbar { width:4px; }
+.con-out::-webkit-scrollbar-thumb { background:var(--border2); }
+.con-line { display:flex; gap:8px; padding:1px 0; animation:li 0.1s ease; }
+.con-ts { color:var(--text2); font-size:9px; flex-shrink:0; padding-top:1px; user-select:none; }
+.con-text { color:#a8d8a8; word-break:break-all; }
+.con-text.sys { color:var(--amber); }
+.con-text.err { color:var(--red); }
+.con-text.inf { color:var(--cyan); }
+.con-input-row { height:32px; border-top:1px solid var(--border); display:flex; align-items:center; padding:0 10px; gap:8px; flex-shrink:0; background:var(--bg2); }
+.con-prompt { color:var(--amber); font-size:13px; flex-shrink:0; }
+.con-input { flex:1; background:none; border:none; outline:none; color:var(--text0); font-family:'JetBrains Mono',monospace; font-size:11px; }
+.con-input::placeholder { color:var(--text2); }
+
+/* BOARD SVG */
+.nucleo-board { position:relative; flex-shrink:0; }
+.pin-hotspot { cursor:pointer; }
+.pin-hotspot circle { fill:var(--bg3); stroke:var(--border2); stroke-width:1.5; transition:all 0.2s; }
+.pin-hotspot:hover circle { fill:var(--amber-dim); stroke:var(--amber); }
+.pin-hotspot.selected circle { fill:var(--amber); stroke:var(--amber2); filter:drop-shadow(0 0 4px var(--amber)); }
+.pin-hotspot.connected circle { fill:var(--green-dim); stroke:var(--green); }
+.pin-hotspot.high circle { fill:var(--green); stroke:var(--green); filter:drop-shadow(0 0 6px var(--green)); }
+.pin-label { font-family:'JetBrains Mono',monospace; font-size:7px; fill:var(--text2); pointer-events:none; }
+.pin-hotspot:hover .pin-label, .pin-hotspot.selected .pin-label { fill:var(--amber2); }
+.pin-hotspot.high .pin-label { fill:var(--green); }
+
+/* TOOLTIP */
+.pin-tip { position:fixed; background:var(--bg0); border:1px solid var(--amber); border-radius:4px; padding:5px 10px; font-size:10px; color:var(--amber2); pointer-events:none; z-index:1000; display:none; white-space:nowrap; box-shadow:var(--glow-amber); }
+.pin-tip.on { display:block; }
+
+/* BREADBOARD */
+.bb-area { flex-shrink:0; width:310px; display:flex; flex-direction:column; gap:10px; }
+.palette { display:flex; gap:6px; flex-wrap:wrap; }
+.pal-item { display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 8px; background:var(--bg2); border:1px solid var(--border2); border-radius:var(--radius); cursor:grab; transition:all 0.15s; font-size:9px; color:var(--text2); user-select:none; }
+.pal-item:hover { border-color:var(--amber); color:var(--amber); background:var(--bg3); }
+.pal-item:active { cursor:grabbing; }
+.pal-icon { font-size:17px; }
+.bb-canvas { background:var(--bg2); border:1px solid var(--border2); border-radius:var(--radius); flex:1; min-height:200px; position:relative; overflow:hidden; }
+.bb-empty { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--text2); font-size:11px; pointer-events:none; }
+
+/* PLACED COMPONENTS */
+.placed-comp { position:absolute; cursor:move; user-select:none; display:flex; flex-direction:column; align-items:center; gap:4px; }
+.led-body { width:34px; height:34px; border-radius:50% 50% 50% 50%/60% 60% 40% 40%; border:2px solid; display:flex; align-items:center; justify-content:center; font-size:10px; transition:all 0.3s; cursor:pointer; }
+.led-body.off { background:rgba(100,100,100,0.1); border-color:var(--text2); color:var(--text2); }
+.led-body.on.red   { background:radial-gradient(circle at 35% 35%,#ff6b6b,#dc2626); border-color:#ef4444; box-shadow:0 0 20px rgba(239,68,68,.8),0 0 40px rgba(239,68,68,.4); color:#fff; }
+.led-body.on.green { background:radial-gradient(circle at 35% 35%,#4ade80,#16a34a); border-color:#22c55e; box-shadow:0 0 20px rgba(34,197,94,.8),0 0 40px rgba(34,197,94,.4); color:#fff; }
+.led-body.on.blue  { background:radial-gradient(circle at 35% 35%,#60a5fa,#2563eb); border-color:#3b82f6; box-shadow:0 0 20px rgba(59,130,246,.8),0 0 40px rgba(59,130,246,.4); color:#fff; }
+.led-body.on.amber { background:radial-gradient(circle at 35% 35%,#fde68a,#d97706); border-color:#f59e0b; box-shadow:0 0 20px rgba(245,158,11,.8),0 0 40px rgba(245,158,11,.4); color:var(--bg0); }
+.led-legs { display:flex; gap:8px; }
+.led-leg { width:2px; height:12px; background:var(--text2); border-radius:1px; position:relative; }
+.led-leg.a::after { content:'+'; position:absolute; bottom:-11px; left:50%; transform:translateX(-50%); font-size:7px; color:var(--amber); }
+.led-leg.c::after { content:'−'; position:absolute; bottom:-11px; left:50%; transform:translateX(-50%); font-size:7px; color:var(--text2); }
+.comp-lbl { font-size:9px; color:var(--text2); text-align:center; max-width:80px; }
+.comp-lbl.conn { color:var(--green); }
+.btn-comp { width:48px; height:28px; background:var(--bg3); border:2px solid var(--border2); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--text1); cursor:pointer; transition:all 0.1s; }
+.btn-comp:active,.btn-comp.pressed { background:var(--amber-dim); border-color:var(--amber); color:var(--amber2); box-shadow:var(--glow-amber); transform:scale(0.96); }
+#boardBtn { cursor:pointer; }
+#boardBtn:hover > rect:first-of-type, #boardBtn:hover { filter:drop-shadow(0 0 5px rgba(245,158,11,0.6)); }
+
+/* WIRE CANVAS */
+#wire-canvas { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:50; }
+
+/* CONTEXT MENU */
+.ctx-menu { position:fixed; background:var(--bg1); border:1px solid var(--border2); border-radius:var(--radius); padding:4px 0; z-index:200; display:none; min-width:140px; box-shadow:0 8px 24px rgba(0,0,0,.4); }
+.ctx-menu.on { display:block; }
+.ctx-item { padding:7px 14px; font-size:11px; color:var(--text1); cursor:pointer; display:flex; align-items:center; gap:8px; }
+.ctx-item:hover { background:var(--bg3); color:var(--text0); }
+.ctx-item.del { color:var(--red); }
+.ctx-sep { height:1px; background:var(--border); margin:3px 0; }
+
+/* AI PANEL */
+.ai-panel { position:fixed; right:16px; bottom:16px; width:320px; background:var(--bg1); border:1px solid var(--amber-dim); border-radius:var(--radius); box-shadow:0 8px 32px rgba(0,0,0,.5),var(--glow-amber); z-index:150; display:none; flex-direction:column; max-height:420px; }
+.ai-panel.on { display:flex; }
+.ai-header { padding:10px 12px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; font-size:11px; color:var(--amber); flex-shrink:0; }
+.ai-msgs { flex:1; overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:8px; min-height:60px; }
+.ai-msg { font-size:11px; line-height:1.6; padding:7px 10px; border-radius:4px; }
+.ai-msg.user { background:var(--bg4); color:var(--text0); align-self:flex-end; max-width:85%; }
+.ai-msg.ai { background:var(--bg2); color:var(--amber2); white-space:pre-wrap; }
+.ai-input-row { display:flex; padding:8px; gap:6px; border-top:1px solid var(--border); flex-shrink:0; }
+.ai-input { flex:1; background:var(--bg3); border:1px solid var(--border2); border-radius:4px; padding:5px 8px; color:var(--text0); font-family:'JetBrains Mono',monospace; font-size:10px; outline:none; }
+.ai-input:focus { border-color:var(--amber-dim); }
+
+/* SCROLLBARS */
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<svg id="wire-canvas"></svg>
+<div class="pin-tip" id="pinTip"></div>
+
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" id="ctxConnect">
+    <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><circle cx="8" cy="8" r="5" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="8" cy="8" r="2"/></svg>
+    Connect to pin
+  </div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item del" id="ctxRemove">
+    <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M2 4h12l-1 10H3L2 4zm5-3h2v2H7V1z"/></svg>
+    Remove
+  </div>
+</div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo"><div class="logo-dot"></div>Veemu</div>
+  <div class="sep"></div>
+  <div class="topbar-center">
+    <span class="session-badge" id="sessionBadge">NO SESSION</span>
+    <div class="status-indicator">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Idle</span>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <button class="btn" id="btnAI">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 2a5 5 0 110 10A5 5 0 018 3zm-1 3v2H5v1h2v2h1V9h2V8H9V6H7z"/></svg>
+      AI
+    </button>
+    <div class="sep"></div>
+    <button class="btn" id="btnBuild">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 8l2 5h6l2-5H3zm3-6l2 5h2L8 2H6z" opacity=".5"/><path d="M5 8l2 4 2-4H5z"/></svg>
+      Build
+    </button>
+    <button class="btn primary" id="btnFlash">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M9 1L3 9h5l-1 6 7-8H9l1-6z"/></svg>
+      Flash
+    </button>
+    <button class="btn primary" id="btnBuildFlash" title="Build then Flash in one step" style="background:var(--bg4);border-color:var(--amber-dim)">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 8l2 5h6l2-5H3zm3-6l2 5h2L8 2H6z" opacity=".5"/><path d="M5 8l2 4 2-4H5z"/></svg>
+      <svg viewBox="0 0 16 16" fill="currentColor" style="margin-left:-4px"><path d="M9 1L3 9h5l-1 6 7-8H9l1-6z"/></svg>
+      B+F
+    </button>
+    <button class="btn danger" id="btnStop" style="display:none">
+      <svg viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="10" height="10"/></svg>
+      Stop
+    </button>
+    <div class="sep"></div>
+    <!-- terminal-flash sync indicator -->
+    <div id="termSyncBadge" title="A session was flashed from terminal — click to connect" onclick="connectLatestSession()" style="display:none;align-items:center;gap:5px;font-size:10px;color:var(--amber2);cursor:pointer;border:1px solid var(--amber-dim);padding:2px 8px;border-radius:3px;animation:pulse 1.5s infinite">
+      <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1z"/></svg>
+      terminal session ↗
+    </div>
+    <span style="font-size:10px;color:var(--text2)">STM32F401RE</span>
+  </div>
+</div>
+
+<!-- WORKSPACE -->
+<div class="workspace" id="workspace">
+
+  <!-- LEFT: EDITOR -->
+  <div class="left-panel" id="leftPanel">
+    <div class="panel-header">
+      <svg class="panel-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2h8l2 2v10H2V2h2zm0 1v10h8V5l-1-1H5L4 3zm2 3h4v1H6V6zm0 2h4v1H6V8zm0 2h3v1H6v-1z"/></svg>
+      <span class="panel-title">veemu-app /</span>
+      <span id="activeAppLabel" style="color:var(--amber2);font-size:10px">blink</span>
+      <div class="panel-actions">
+        <select id="appSelector" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text1);font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 6px;border-radius:3px;cursor:pointer;outline:none">
+          <option value="blink">blink</option>
+          <option value="led_patterns">led_patterns</option>
+          <option value="tim_test">tim_test</option>
+          <option value="spi_test">spi_test</option>
+          <option value="i2c_test">i2c_test</option>
+        </select>
+      </div>
+    </div>
+    <div class="file-tree" id="fileTree"><!-- populated by buildFileTree() --></div>
+    <div class="editor-wrap"><div id="monaco-editor"></div></div>
+    <div class="editor-footer">
+      <span id="editorLang">C · UTF-8 · LF</span>
+      <span id="editorFilePath" style="color:var(--amber-dim);font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px"></span>
+      <span style="margin-left:auto" id="cursorPos">Ln 1, Col 1</span>
+    </div>
+  </div>
+
+  <div class="vdivider" id="vDiv"></div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="right-col" id="rightCol">
+
+    <!-- BOARD -->
+    <div class="board-panel" id="boardPanel">
+      <div class="panel-header">
+        <svg class="panel-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2V2zm1 1v10h10V3H3zm2 2h2v1H5V5zm4 0h2v1H9V5zM5 9h2v1H5V9zm4 0h2v1H9V9z"/></svg>
+        <span class="panel-title">HARDWARE — STM32 NUCLEO-64</span>
+        <div class="panel-actions">
+          <button class="btn" style="height:20px;font-size:9px" id="btnAddLed">+ LED</button>
+          <button class="btn" style="height:20px;font-size:9px" id="btnAddBtn">+ BTN</button>
+        </div>
+      </div>
+      <div class="board-area" id="boardArea">
+        <!-- Nucleo PCB -->
+        <div class="nucleo-board">
+          <svg width="220" height="520" viewBox="0 0 220 520" id="boardSvg">
+            <defs>
+              <linearGradient id="pcbGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#0a2a1a"/>
+                <stop offset="100%" stop-color="#071a10"/>
+              </linearGradient>
+            </defs>
+            <rect x="2" y="2" width="216" height="516" rx="4" fill="url(#pcbGrad)" stroke="#1a4a2a" stroke-width="2"/>
+            <circle cx="14" cy="14" r="4" fill="none" stroke="#1a4a2a" stroke-width="1"/>
+            <circle cx="206" cy="14" r="4" fill="none" stroke="#1a4a2a" stroke-width="1"/>
+            <circle cx="14" cy="506" r="4" fill="none" stroke="#1a4a2a" stroke-width="1"/>
+            <circle cx="206" cy="506" r="4" fill="none" stroke="#1a4a2a" stroke-width="1"/>
+            <text x="110" y="30" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#2a6a3a" font-weight="600">NUCLEO-F401RE</text>
+            <text x="110" y="42" text-anchor="middle" font-family="JetBrains Mono" font-size="6" fill="#1a4a2a">STM32F401RET6</text>
+            <rect x="40" y="52" width="140" height="62" rx="2" fill="#071a10" stroke="#1a4a2a" stroke-width="1"/>
+            <text x="110" y="69" text-anchor="middle" font-family="JetBrains Mono" font-size="6" fill="#2a6a3a">ST-LINK/V2-1</text>
+            <rect x="85" y="8" width="50" height="16" rx="2" fill="#222" stroke="#444" stroke-width="1"/>
+            <text x="110" y="19" text-anchor="middle" font-family="JetBrains Mono" font-size="6" fill="#666">USB</text>
+            <rect x="68" y="188" width="84" height="84" rx="3" fill="#111" stroke="#2a6a3a" stroke-width="1.5"/>
+            <text x="110" y="227" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#2a6a3a">STM32</text>
+            <text x="110" y="238" text-anchor="middle" font-family="JetBrains Mono" font-size="6" fill="#1a4a2a">F401RE</text>
+            <rect x="148" y="194" width="14" height="8" rx="1" fill="#1a2a1a" stroke="#2a6a3a" stroke-width="1"/>
+            <text x="155" y="210" text-anchor="middle" font-family="JetBrains Mono" font-size="5" fill="#1a4a2a">8MHz</text>
+            <!-- LED glow filter -->
+            <defs>
+              <filter id="ledGlow" x="-100%" y="-100%" width="300%" height="300%">
+                <feGaussianBlur stdDeviation="3" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <filter id="ledGlowStrong" x="-150%" y="-150%" width="400%" height="400%">
+                <feGaussianBlur stdDeviation="5" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <!-- LD2 user green (PA5) -->
+            <circle cx="162" cy="152" r="5" fill="#0a2a1a" stroke="#2a6a3a" stroke-width="1" id="boardLed"/>
+            <circle cx="162" cy="152" r="8" fill="transparent" id="boardLedGlow" style="pointer-events:none;opacity:0"/>
+            <text x="162" y="165" text-anchor="middle" font-family="JetBrains Mono" font-size="6" fill="#2a6a3a">LD2</text>
+            <!-- LD3 red power -->
+            <circle cx="148" cy="152" r="4" fill="#3a0a0a" stroke="#7f1d1d" stroke-width="1" id="ledLD3"/>
+            <text x="148" y="165" text-anchor="middle" font-family="JetBrains Mono" font-size="6" fill="#7f1d1d">LD3</text>
+            <!-- LD1 amber COM -->
+            <circle cx="176" cy="152" r="4" fill="#0a0a0a" stroke="#555" stroke-width="1" id="ledLD1"/>
+            <text x="176" y="165" text-anchor="middle" font-family="JetBrains Mono" font-size="6" fill="#555">LD1</text>
+            <!-- B1 — clickable, active LOW (PC13) -->
+            <rect x="28" y="138" width="30" height="28" rx="4" fill="#1e2330" stroke="#555" stroke-width="1.5" id="boardBtn" style="cursor:pointer"/>
+            <rect x="32" y="142" width="22" height="20" rx="3" fill="#252b3a" stroke="#666" stroke-width="1" id="boardBtnInner"/>
+            <text x="43" y="156" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#aaa" font-weight="bold">B1</text>
+            <text x="43" y="175" text-anchor="middle" font-family="JetBrains Mono" font-size="5.5" fill="#555">PC13</text>
+            <!-- RST -->
+            <circle cx="43" cy="318" r="7" fill="#1a1a1a" stroke="#444" stroke-width="1.5" id="boardRst" style="cursor:pointer"/>
+            <circle cx="43" cy="318" r="4" fill="#252b3a" stroke="#555" stroke-width="1" id="boardRstInner"/>
+            <text x="43" y="332" text-anchor="middle" font-family="JetBrains Mono" font-size="6" fill="#666">RST</text>
+            <text x="14" y="140" font-family="JetBrains Mono" font-size="6" fill="#1a4a2a" transform="rotate(-90,14,140)">CN7 — LEFT</text>
+            <text x="206" y="140" font-family="JetBrains Mono" font-size="6" fill="#1a4a2a" transform="rotate(90,206,140)">CN10 — RIGHT</text>
+            <path d="M110 272 L110 300 L60 300" stroke="#0a3a1a" stroke-width="0.5" fill="none"/>
+            <path d="M110 272 L110 300 L160 300" stroke="#0a3a1a" stroke-width="0.5" fill="none"/>
+            <rect x="20" y="458" width="80" height="30" rx="2" fill="#071a10" stroke="#1a4a2a" stroke-width="1"/>
+            <rect x="120" y="458" width="80" height="30" rx="2" fill="#071a10" stroke="#1a4a2a" stroke-width="1"/>
+            <g id="leftPins"></g>
+            <g id="rightPins"></g>
+          </svg>
+        </div>
+
+        <!-- Breadboard -->
+        <div class="bb-area">
+          <div class="palette">
+            <div class="pal-item" draggable="true" data-type="led" data-color="red"><span class="pal-icon">🔴</span>LED R</div>
+            <div class="pal-item" draggable="true" data-type="led" data-color="green"><span class="pal-icon">🟢</span>LED G</div>
+            <div class="pal-item" draggable="true" data-type="led" data-color="amber"><span class="pal-icon">🟡</span>LED Y</div>
+            <div class="pal-item" draggable="true" data-type="led" data-color="blue"><span class="pal-icon">🔵</span>LED B</div>
+            <div class="pal-item" draggable="true" data-type="button"><span class="pal-icon">🔲</span>Button</div>
+          </div>
+          <div class="bb-canvas" id="breadboard">
+            <div class="bb-empty" id="bbEmpty">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect x="2" y="2" width="28" height="28" rx="4" stroke="#2e3548" stroke-width="2" stroke-dasharray="4 3"/><path d="M16 10v12M10 16h12" stroke="#2e3548" stroke-width="2" stroke-linecap="round"/></svg>
+              <span>Drag components here</span>
+              <span style="font-size:9px;opacity:.6">Right-click → Connect to pin</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hdivider" id="hDiv"></div>
+
+    <!-- LOG PANEL -->
+    <div class="log-panel" id="logPanel">
+      <div class="tab-bar">
+        <div class="tab tbuild active" id="tab-build" onclick="switchTab('build')"><div class="tab-dot"></div>Build</div>
+        <div class="tab tflash" id="tab-flash" onclick="switchTab('flash')"><div class="tab-dot"></div>Flash</div>
+        <div class="tab tconsole" id="tab-console" onclick="switchTab('console')"><div class="tab-dot"></div>Console</div>
+        <div class="tab-bar-right">
+          <button class="btn" style="height:20px;font-size:9px" onclick="clearCurrent()">Clear</button>
+        </div>
+      </div>
+
+      <!-- BUILD -->
+      <div class="tab-pane active" id="pane-build">
+        <div class="log-out" id="buildLog">
+          <div class="log-empty" id="buildEmpty">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            <span>Click Build to compile firmware</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- FLASH -->
+      <div class="tab-pane" id="pane-flash">
+        <div class="log-out" id="flashLog">
+          <div class="log-empty" id="flashEmpty">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            <span>Flash a .elf to see output here</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONSOLE -->
+      <div class="tab-pane" id="pane-console">
+        <div class="con-out" id="conOut"></div>
+        <div class="con-input-row">
+          <span class="con-prompt">›</span>
+          <input class="con-input" id="conInput" placeholder="Send to UART..." spellcheck="false"/>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /right-col -->
+</div><!-- /workspace -->
+
+<!-- AI -->
+<div class="ai-panel" id="aiPanel">
+  <div class="ai-header">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1z"/></svg>
+    Veemu AI Assistant
+    <button class="btn" style="height:18px;font-size:9px;margin-left:auto" onclick="document.getElementById('aiPanel').classList.remove('on')">✕</button>
+  </div>
+  <div class="ai-msgs" id="aiMsgs">
+    <div class="ai-msg ai">Hi! I'm your embedded dev assistant. I can help with STM32 firmware, register configs, or debugging. What are you building?</div>
+  </div>
+  <div class="ai-input-row">
+    <input class="ai-input" id="aiInput" placeholder="Ask anything about STM32..."/>
+    <button class="btn primary" style="height:26px" onclick="sendAI()">→</button>
+  </div>
+</div>
+
+<script>
+// ──────────────────────────────────────
+// CONFIG
+// ──────────────────────────────────────
+const API    = 'http://localhost:8080';
+const WS_URL = 'ws://localhost:8080/live';
+
+// ──────────────────────────────────────
+// STATE
+// ──────────────────────────────────────
+let sessionId = null, ws = null, monacoEditor = null;
+let selectedPin = null, wirePending = null, contextTarget = null;
+let placedComponents = [], nextCompId = 1;
+let dragType = null, dragColor = null;
+let pinStates = {};
+let currentTab = 'build';
+let activeApp = 'blink';          // currently selected app in veemu-app/examples/
+let lastBuiltElf = null;          // Blob of last successful build
+let lastKnownSessionId = null;    // for terminal-flash detection
+
+// ──────────────────────────────────────
+// RESIZERS
+// ──────────────────────────────────────
+(function() {
+  // Vertical divider
+  const vd = document.getElementById('vDiv');
+  const lp = document.getElementById('leftPanel');
+  let vDrag = false;
+  vd.addEventListener('mousedown', e => { vDrag = true; vd.classList.add('dragging'); document.body.style.cssText = 'cursor:col-resize;user-select:none'; e.preventDefault(); });
+  document.addEventListener('mousemove', e => {
+    if (!vDrag) return;
+    const r = document.getElementById('workspace').getBoundingClientRect();
+    let w = Math.max(200, Math.min(e.clientX - r.left, r.width - 280));
+    lp.style.width = w + 'px';
+    monacoEditor?.layout();
+    updateAllWires();
+  });
+  document.addEventListener('mouseup', () => { if (vDrag) { vDrag = false; vd.classList.remove('dragging'); document.body.style.cssText = ''; } });
+
+  // Horizontal divider
+  const hd = document.getElementById('hDiv');
+  const lpp = document.getElementById('logPanel');
+  const rc  = document.getElementById('rightCol');
+  let hDrag = false;
+  hd.addEventListener('mousedown', e => { hDrag = true; hd.classList.add('dragging'); document.body.style.cssText = 'cursor:row-resize;user-select:none'; e.preventDefault(); });
+  document.addEventListener('mousemove', e => {
+    if (!hDrag) return;
+    const r = rc.getBoundingClientRect();
+    let h = Math.max(28, Math.min(r.bottom - e.clientY, r.height - 80));
+    lpp.style.height = h + 'px';
+    updateAllWires();
+  });
+  document.addEventListener('mouseup', () => { if (hDrag) { hDrag = false; hd.classList.remove('dragging'); document.body.style.cssText = ''; } });
+})();
+
+// ──────────────────────────────────────
+// TABS
+// ──────────────────────────────────────
+function switchTab(name) {
+  currentTab = name;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('pane-' + name).classList.add('active');
+}
+
+function clearCurrent() {
+  const empties = {
+    build: '<div class="log-empty" id="buildEmpty"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg><span>Click Build to compile firmware</span></div>',
+    flash: '<div class="log-empty" id="flashEmpty"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg><span>Flash a .elf to see output here</span></div>'
+  };
+  if (currentTab === 'build') { document.getElementById('buildLog').innerHTML = empties.build; document.getElementById('tab-build').classList.remove('has-data'); }
+  else if (currentTab === 'flash') { document.getElementById('flashLog').innerHTML = empties.flash; document.getElementById('tab-flash').classList.remove('has-data'); }
+  else { document.getElementById('conOut').innerHTML = ''; }
+}
+
+function appendLog(target, text, cls = '') {
+  const el = document.getElementById(target);
+  // Remove empty state
+  el.querySelector('.log-empty')?.remove();
+  const ts = fmtTime();
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-ts">${ts}</span><span class="log-text ${cls}">${escHtml(text)}</span>`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+  const tabId = target === 'buildLog' ? 'tab-build' : 'tab-flash';
+  document.getElementById(tabId).classList.add('has-data');
+}
+
+// ──────────────────────────────────────
+// CONSOLE LOG
+// ──────────────────────────────────────
+function clog(text, type = '') {
+  const out = document.getElementById('conOut');
+  const line = document.createElement('div');
+  line.className = 'con-line';
+  line.innerHTML = `<span class="con-ts">${fmtTimeFull()}</span><span class="con-text ${type}">${escHtml(text)}</span>`;
+  out.appendChild(line);
+  out.scrollTop = out.scrollHeight;
+  document.getElementById('tab-console').classList.add('has-data');
+}
+
+document.getElementById('conInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { const v = e.target.value.trim(); if (v) { clog('› ' + v, 'sys'); e.target.value = ''; } }
+});
+
+// ──────────────────────────────────────
+// MONACO
+// ──────────────────────────────────────
+require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }});
+require(['vs/editor/editor.main'], () => {
+  monaco.editor.defineTheme('veemu', {
+    base: 'vs-dark', inherit: true,
+    rules: [
+      { token: 'comment', foreground: '5a6478', fontStyle: 'italic' },
+      { token: 'keyword', foreground: 'f59e0b' },
+      { token: 'string', foreground: '86efac' },
+      { token: 'number', foreground: 'a78bfa' },
+      { token: 'type', foreground: '67e8f9' },
+    ],
+    colors: {
+      'editor.background': '#12151a',
+      'editor.foreground': '#e8eaf0',
+      'editorLineNumber.foreground': '#2e3548',
+      'editorLineNumber.activeForeground': '#5a6478',
+      'editor.lineHighlightBackground': '#181c23',
+      'editorCursor.foreground': '#f59e0b',
+      'editor.selectionBackground': '#252b3a',
+    }
+  });
+  monacoEditor = monaco.editor.create(document.getElementById('monaco-editor'), {
+    value: '// Loading...', language: 'c', theme: 'veemu',
+    fontSize: 12, fontFamily: "'JetBrains Mono',monospace", lineHeight: 20,
+    minimap: { enabled: false }, scrollBeyondLastLine: false,
+    renderLineHighlight: 'gutter', padding: { top: 8 }, glyphMargin: false,
+    folding: true, automaticLayout: true,
+  });
+  monacoEditor.onDidChangeCursorPosition(e => {
+    document.getElementById('cursorPos').textContent = `Ln ${e.position.lineNumber}, Col ${e.position.column}`;
+  });
+  monacoEditor.onDidChangeModelContent(() => {
+    // Mark path as dirty with a dot indicator
+    const pathEl = document.getElementById('editorFilePath');
+    if (pathEl && !pathEl.textContent.endsWith(' ●')) pathEl.textContent += ' ●';
+  });
+  // Ctrl+S / Cmd+S → save
+  monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, saveCurrentFile);
+});
+
+// ──────────────────────────────────────
+// VEEMU-APP FILE SYSTEM
+// Real structure: veemu-app/examples/<app>/<app>.c
+//                veemu-app/platform/systick.c/.h
+//                veemu-app/main.c  veemu-app/Makefile
+// Files are fetched from the API: GET /file?app=<app>&path=<path>
+// Files are saved via:            POST /file  {app, path, content}
+// Build triggered via:            POST /build {app}
+// Flash triggered via:            POST /flash (multipart elf) OR POST /build-flash {app}
+// ──────────────────────────────────────
+
+const APPS = ['blink','led_patterns','tim_test','spi_test','i2c_test'];
+
+function getFileTree(app) {
+  return [
+    { label: 'veemu-app/',            type: 'folder', indent: 0 },
+    { label: 'main.c',                type: 'file', path: 'main.c',                       indent: 1 },
+    { label: 'Makefile',              type: 'file', path: 'Makefile', lang: 'makefile',    indent: 1 },
+    { label: 'platform/',             type: 'folder', indent: 1 },
+    { label: 'stm32f401re.h',         type: 'file', path: 'platform/stm32f401re.h',        indent: 2 },
+    { label: 'systick.h',             type: 'file', path: 'platform/systick.h',             indent: 2 },
+    { label: 'systick.c',             type: 'file', path: 'platform/systick.c',             indent: 2 },
+    { label: 'startup.c',             type: 'file', path: 'platform/startup.c',             indent: 2 },
+    { label: `examples/${app}/`,      type: 'folder', indent: 1 },
+    { label: `${app}.c`,              type: 'file', path: `examples/${app}/${app}.c`,       indent: 2, active: true },
+    { label: `${app}.h`,              type: 'file', path: `examples/${app}/${app}.h`,       indent: 2 },
+  ];
+}
+
+function buildFileTree(app) {
+  const ft = document.getElementById('fileTree');
+  ft.innerHTML = '';
+  const folderSvg = `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 3.5A1.5 1.5 0 012.5 2h3.764c.958 0 1.76.56 2.09 1.362L8.5 4H13.5A1.5 1.5 0 0115 5.5v7a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 011 12.5v-9z"/></svg>`;
+  const fileSvg  = `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 1h8l3 3v11H1V1h3zm7 0v3h3L11 1z"/></svg>`;
+  getFileTree(app).forEach(item => {
+    const d = document.createElement('div');
+    d.className = 'tree-item' + (item.type==='folder'?' folder':'') + (item.active?' active':'');
+    d.style.paddingLeft = (12 + item.indent * 12) + 'px';
+    d.innerHTML = (item.type==='folder' ? folderSvg : fileSvg) + ' ' + item.label;
+    if (item.type === 'file') d.onclick = () => loadFile(item, d);
+    ft.appendChild(d);
+  });
+}
+
+async function loadFile(item, el) {
+  document.querySelectorAll('.tree-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  if (!monacoEditor) return;
+  const lang = (item.path.endsWith('.h') || item.path.endsWith('.c')) ? 'c'
+             : (item.path === 'Makefile' || item.lang === 'makefile') ? 'makefile' : 'plaintext';
+  document.getElementById('editorLang').textContent =
+    lang === 'c' ? 'C · UTF-8 · LF' : lang === 'makefile' ? 'Makefile · LF' : 'Text · LF';
+  document.getElementById('editorFilePath').textContent = `veemu-app/${item.path}`;
+  document.getElementById('editorFilePath').style.color = '';
+  try {
+    const resp = await fetch(`${API}/file?app=${activeApp}&path=${encodeURIComponent(item.path)}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const text = await resp.text();
+    monacoEditor.setValue(text);
+    monaco.editor.setModelLanguage(monacoEditor.getModel(), lang);
+  } catch(e) {
+    monacoEditor.setValue(`// Could not load veemu-app/${item.path}\n// Ensure veemu-apiserver is running on :8080\n// Error: ${e.message}`);
+    monaco.editor.setModelLanguage(monacoEditor.getModel(), lang);
+  }
+  monacoEditor._veemuPath = item.path;
+  monacoEditor._veemuLang = lang;
+}
+
+async function saveCurrentFile() {
+  if (!monacoEditor?._veemuPath) return;
+  try {
+    const resp = await fetch(`${API}/file`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ app: activeApp, path: monacoEditor._veemuPath, content: monacoEditor.getValue() })
+    });
+    const pathEl = document.getElementById('editorFilePath');
+    if (resp.ok) {
+      // Strip dirty marker, flash green
+      pathEl.textContent = pathEl.textContent.replace(' ●', '');
+      pathEl.style.color = 'var(--green)';
+      setTimeout(() => { pathEl.style.color = ''; }, 900);
+    } else {
+      pathEl.style.color = 'var(--red)';
+      setTimeout(() => { pathEl.style.color = ''; }, 900);
+    }
+  } catch(e) { clog('Save failed: ' + e.message, 'err'); }
+}
+
+document.getElementById('appSelector').addEventListener('change', e => {
+  activeApp = e.target.value;
+  document.getElementById('activeAppLabel').textContent = activeApp;
+  buildFileTree(activeApp);
+  // Auto-open the app primary .c file
+  setTimeout(() => {
+    const activeItem = getFileTree(activeApp).find(f => f.active);
+    const activeEl   = document.querySelector('#fileTree .tree-item.active');
+    if (activeItem && activeEl) loadFile(activeItem, activeEl);
+  }, 50);
+  clog(`Switched to app: ${activeApp}`, 'inf');
+});
+
+function selectFile() { /* legacy stub */ }
+
+// ──────────────────────────────────────
+// PIN DEFINITIONS
+// ──────────────────────────────────────
+const LEFT_PINS = [
+  {name:'PC10',port:'C',pin:10},{name:'PC11',port:'C',pin:11},{name:'PC12',port:'C',pin:12},
+  {name:'PD2',port:'D',pin:2},{name:'VDD',port:null},{name:'E5V',port:null},
+  {name:'BOOT0',port:null},{name:'GND',port:null},{name:'NC',port:null},{name:'IOREF',port:null},
+  {name:'PA13',port:'A',pin:13},{name:'PA14',port:'A',pin:14},{name:'PA15',port:'A',pin:15},
+  {name:'GND',port:null},{name:'PB7',port:'B',pin:7},{name:'PC13',port:'C',pin:13},
+  {name:'PC14',port:'C',pin:14},{name:'PC15',port:'C',pin:15},{name:'PH0',port:'H',pin:0},
+  {name:'PH1',port:'H',pin:1},{name:'VBAT',port:null},{name:'PC2',port:'C',pin:2},{name:'PC3',port:'C',pin:3},
+];
+const RIGHT_PINS = [
+  {name:'PC9',port:'C',pin:9},{name:'PB8',port:'B',pin:8},{name:'PB9',port:'B',pin:9},
+  {name:'AVDD',port:null},{name:'GND',port:null},{name:'PA5',port:'A',pin:5,note:'LD2/SPI SCK'},
+  {name:'PA6',port:'A',pin:6},{name:'PA7',port:'A',pin:7},{name:'PB6',port:'B',pin:6},
+  {name:'PC7',port:'C',pin:7},{name:'PA9',port:'A',pin:9},{name:'PA8',port:'A',pin:8},
+  {name:'PB10',port:'B',pin:10},{name:'PB4',port:'B',pin:4},{name:'PB5',port:'B',pin:5},
+  {name:'PB3',port:'B',pin:3},{name:'PA10',port:'A',pin:10},
+  {name:'PA2',port:'A',pin:2,note:'USART2 TX'},{name:'PA3',port:'A',pin:3,note:'USART2 RX'},
+  {name:'PA0',port:'A',pin:0},{name:'PA1',port:'A',pin:1},{name:'PA4',port:'A',pin:4},
+  {name:'PB0',port:'B',pin:0},{name:'PC1',port:'C',pin:1},{name:'PC0',port:'C',pin:0},
+];
+
+// ──────────────────────────────────────
+// BUILD PINS
+// ──────────────────────────────────────
+function buildPins() {
+  LEFT_PINS.forEach((p,i)  => document.getElementById('leftPins').appendChild(mkPin(p,12,105+i*16,'left')));
+  RIGHT_PINS.forEach((p,i) => document.getElementById('rightPins').appendChild(mkPin(p,208,105+i*16,'right')));
+}
+
+function mkPin(pd, x, y, side) {
+  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.setAttribute('class','pin-hotspot');
+  if (pd.port !== null) { g.setAttribute('data-port',pd.port); g.setAttribute('data-pin',pd.pin); g.id=`pin-${pd.port}${pd.pin}`; }
+  const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  c.setAttribute('cx',x); c.setAttribute('cy',y); c.setAttribute('r','4');
+  g.appendChild(c);
+  const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+  t.setAttribute('class','pin-label');
+  t.setAttribute('x', side==='left' ? x+8 : x-8);
+  t.setAttribute('y',y+2.5);
+  t.setAttribute('text-anchor', side==='left'?'start':'end');
+  t.textContent = pd.name;
+  g.appendChild(t);
+  if (pd.port !== null) {
+    g.addEventListener('mouseenter', e => { const tp=document.getElementById('pinTip'); tp.textContent=pd.name+(pd.note?' — '+pd.note:''); tp.style.left=(e.clientX+12)+'px'; tp.style.top=(e.clientY-6)+'px'; tp.classList.add('on'); });
+    g.addEventListener('mouseleave', () => document.getElementById('pinTip').classList.remove('on'));
+    g.addEventListener('click', () => onPinClick(pd, g));
+  }
+  return g;
+}
+
+function onPinClick(pd, g) {
+  if (wirePending) {
+    connectComp(wirePending, pd, g);
+    wirePending = null;
+    document.querySelectorAll('.pin-hotspot').forEach(p=>p.classList.remove('selected'));
+  } else {
+    document.querySelectorAll('.pin-hotspot').forEach(p=>p.classList.remove('selected'));
+    g.classList.add('selected');
+    selectedPin = pd;
+    clog(`📌 Selected pin ${pd.name}`, 'inf');
+  }
+}
+
+// ──────────────────────────────────────
+// GPIO STATE
+// ──────────────────────────────────────
+function setGPIO(port, pin, state) {
+  pinStates[port+pin] = state;
+  const pe = document.getElementById(`pin-${port}${pin}`);
+  if (pe) { pe.classList.toggle('high',state); if(state) pe.classList.add('connected'); }
+  placedComponents.forEach(c => {
+    if (c.connectedPin && c.connectedPin.port===port && c.connectedPin.pin===pin && c.type==='led') {
+      const b = document.getElementById(`led-body-${c.id}`);
+      if (b) { b.classList.toggle('on',state); b.classList.toggle('off',!state); }
+    }
+  });
+  if (port==='A' && pin===5) {
+    const l    = document.getElementById('boardLed');
+    const glow = document.getElementById('boardLedGlow');
+    if (l) {
+      l.setAttribute('fill', state ? '#22c55e' : '#0a2a1a');
+      l.setAttribute('stroke', state ? '#4ade80' : '#2a6a3a');
+      l.setAttribute('stroke-width', state ? '1.5' : '1');
+      l.style.filter = state ? 'url(#ledGlowStrong)' : '';
+    }
+    if (glow) {
+      glow.setAttribute('fill', state ? '#22c55e' : 'transparent');
+      glow.style.opacity = state ? '0.35' : '0';
+      glow.style.transition = 'opacity 0.04s';
+    }
+  }
+}
+
+function setPowerLEDs(on) {
+  const ld3=document.getElementById('ledLD3'); const ld1=document.getElementById('ledLD1');
+  if(ld3){ld3.setAttribute('fill',on?'#dc2626':'#3a0a0a');ld3.setAttribute('stroke',on?'#ef4444':'#7f1d1d');ld3.style.filter=on?'drop-shadow(0 0 4px #ef4444)':'';}
+  if(ld1){ld1.setAttribute('fill',on?'#d97706':'#0a0a0a');ld1.setAttribute('stroke',on?'#f59e0b':'#555');ld1.style.filter=on?'drop-shadow(0 0 4px #f59e0b)':'';}
+  // Highlight B1 button when session active so user knows it's clickable
+  const btn=document.getElementById('boardBtn');
+  const btnInner=document.getElementById('boardBtnInner');
+  if(btn){ btn.setAttribute('stroke', on ? '#f59e0b' : '#555'); }
+  if(btnInner){ btnInner.setAttribute('stroke', on ? '#888' : '#666'); }
+  const btnLabel = btn?.parentElement?.querySelector('text');
+  if(btnLabel){ btnLabel.setAttribute('fill', on ? '#f59e0b' : '#aaa'); }
+}
+
+// ──────────────────────────────────────
+// COMPONENTS
+// ──────────────────────────────────────
+function addComp(type, color, x, y) {
+  document.getElementById('bbEmpty').style.display = 'none';
+  const id = nextCompId++;
+  const el = document.createElement('div');
+  el.className = 'placed-comp'; el.id = `comp-${id}`;
+  el.style.left = (x !== undefined ? x : 20+(placedComponents.length%3)*90)+'px';
+  el.style.top  = (y !== undefined ? y : 20+Math.floor(placedComponents.length/3)*90)+'px';
+  el.innerHTML = type==='led'
+    ? `<div class="led-body off ${color}" id="led-body-${id}">💡</div><div class="led-legs"><div class="led-leg a"></div><div class="led-leg c"></div></div><div class="comp-lbl" id="clbl-${id}">LED (${color})<br><span style="color:var(--text2);font-size:8px">Not connected</span></div>`
+    : `<div class="btn-comp" id="btn-body-${id}" onmousedown="pressBtn(${id})" onmouseup="releaseBtn(${id})">BTN</div><div class="comp-lbl" id="clbl-${id}">Button<br><span style="color:var(--text2);font-size:8px">Not connected</span></div>`;
+  document.getElementById('breadboard').appendChild(el);
+  const comp = { id, type, color, el, connectedPin: null };
+  placedComponents.push(comp);
+  makeDraggable(el, comp);
+  el.addEventListener('contextmenu', e => { e.preventDefault(); contextTarget=comp; const m=document.getElementById('ctxMenu'); m.style.left=e.clientX+'px'; m.style.top=e.clientY+'px'; m.classList.add('on'); });
+  return comp;
+}
+
+function pressBtn(id)   { document.getElementById(`btn-body-${id}`)?.classList.add('pressed'); const c=placedComponents.find(c=>c.id===id); if(c?.connectedPin) clog(`🔲 Button → ${c.connectedPin.name} HIGH`,'inf'); }
+function releaseBtn(id) { document.getElementById(`btn-body-${id}`)?.classList.remove('pressed'); }
+
+function connectComp(comp, pd, ge) {
+  comp.connectedPin = pd;
+  ge.classList.add('connected'); ge.classList.remove('selected');
+  const lbl = document.getElementById(`clbl-${comp.id}`);
+  if (lbl) { lbl.innerHTML = `${comp.type==='led'?`LED (${comp.color})`:'Button'}<br><span style="color:var(--green);font-size:8px">→ ${pd.name}</span>`; lbl.classList.add('conn'); }
+  drawWire(comp, pd);
+  clog(`✅ Connected ${comp.type} to ${pd.name}`, 'sys');
+}
+
+function removeComp(comp) {
+  comp.el.remove();
+  if (comp.connectedPin) document.getElementById(`pin-${comp.connectedPin.port}${comp.connectedPin.pin}`)?.classList.remove('connected','high');
+  removeWire(comp);
+  placedComponents = placedComponents.filter(c=>c.id!==comp.id);
+  if (!placedComponents.length) document.getElementById('bbEmpty').style.display = 'flex';
+}
+
+document.addEventListener('click', () => document.getElementById('ctxMenu').classList.remove('on'));
+document.getElementById('ctxConnect').onclick = () => { if(contextTarget){ wirePending=contextTarget; clog(`🔌 Click a GPIO pin to connect ${contextTarget.type}...`,'inf'); document.getElementById('ctxMenu').classList.remove('on'); }};
+document.getElementById('ctxRemove').onclick  = () => { if(contextTarget){ removeComp(contextTarget); document.getElementById('ctxMenu').classList.remove('on'); }};
+
+document.getElementById('btnAddLed').onclick = () => addComp('led','green');
+document.getElementById('btnAddBtn').onclick = () => addComp('button',null);
+
+// Drag from palette
+document.querySelectorAll('.pal-item').forEach(i => i.addEventListener('dragstart', e => { dragType=i.dataset.type; dragColor=i.dataset.color||'green'; e.dataTransfer.effectAllowed='copy'; }));
+document.getElementById('breadboard').addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect='copy'; });
+document.getElementById('breadboard').addEventListener('drop', e => { e.preventDefault(); const r=document.getElementById('breadboard').getBoundingClientRect(); addComp(dragType,dragColor,e.clientX-r.left-20,e.clientY-r.top-20); });
+
+// Drag placed components
+function makeDraggable(el, comp) {
+  let ox,oy,sx,sy;
+  el.addEventListener('mousedown', e => {
+    if (e.button!==0||e.target.classList.contains('btn-comp')) return;
+    ox=parseInt(el.style.left)||0; oy=parseInt(el.style.top)||0; sx=e.clientX; sy=e.clientY;
+    const mv=ev=>{el.style.left=(ox+ev.clientX-sx)+'px'; el.style.top=(oy+ev.clientY-sy)+'px'; if(comp.connectedPin) updateWire(comp,comp.connectedPin);};
+    const up=()=>{document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up);};
+    document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
+  });
+}
+
+// ──────────────────────────────────────
+// WIRES
+// ──────────────────────────────────────
+const wires = {};
+function drawWire(comp, pd) {
+  removeWire(comp);
+  const svg=document.getElementById('wire-canvas');
+  const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.id=`wire-${comp.id}`;
+  path.setAttribute('stroke', comp.color==='red'?'#ef4444':comp.color==='green'?'#22c55e':comp.color==='amber'?'#f59e0b':comp.color==='blue'?'#3b82f6':'#9ca3af');
+  path.setAttribute('stroke-width','2'); path.setAttribute('fill','none');
+  path.setAttribute('stroke-dasharray','4 3'); path.setAttribute('opacity','0.6');
+  svg.appendChild(path); wires[comp.id]=path; updateWire(comp,pd);
+}
+function updateWire(comp,pd) {
+  const path=wires[comp.id]; if(!path) return;
+  const pe=document.getElementById(`pin-${pd.port}${pd.pin}`); if(!pe||!comp.el) return;
+  const pc=pe.querySelector('circle'); if(!pc) return;
+  const pr=pc.getBoundingClientRect(), cr=comp.el.getBoundingClientRect();
+  const x1=pr.left+pr.width/2, y1=pr.top+pr.height/2, x2=cr.left+cr.width/2, y2=cr.top;
+  path.setAttribute('d',`M${x1},${y1} C${(x1+x2)/2},${y1} ${(x1+x2)/2},${y2} ${x2},${y2}`);
+}
+function removeWire(comp) { if(wires[comp.id]){wires[comp.id].remove(); delete wires[comp.id];} }
+function updateAllWires() { placedComponents.forEach(c=>{if(c.connectedPin) updateWire(c,c.connectedPin);}); }
+window.addEventListener('resize',updateAllWires);
+
+// ──────────────────────────────────────
+// BUILD — calls POST /build {app} on server
+// Server runs: make APP=<app> in veemu-app/
+// Returns streaming build log via JSON lines
+// ──────────────────────────────────────
+async function doBuild() {
+  // Auto-save current file before building
+  await saveCurrentFile();
+  switchTab('build');
+  clearCurrent();
+  appendLog('buildLog', `$ make APP=${activeApp}`, 'cmd');
+  appendLog('buildLog', `Building veemu-app/examples/${activeApp}/...`, 'warn');
+  const btn = document.getElementById('btnBuild');
+  btn.disabled = true;
+  try {
+    const resp = await fetch(`${API}/build`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ app: activeApp })
+    });
+    if (!resp.ok) {
+      const txt = await resp.text();
+      appendLog('buildLog', `❌ Build failed (HTTP ${resp.status})`, 'err');
+      appendLog('buildLog', txt, 'err');
+      clog(`Build failed: ${txt.slice(0,120)}`, 'err');
+      return false;
+    }
+    const data = await resp.json();
+    // data.output = build log lines, data.success = bool, data.elf_path = server path
+    (data.output || '').split('\n').filter(Boolean).forEach(line => {
+      const cls = line.includes('error:') ? 'err' : line.includes('warning:') ? 'warn' : line.startsWith('  ') ? '' : 'cmd';
+      appendLog('buildLog', line, cls);
+    });
+    if (data.success) {
+      appendLog('buildLog', `✅ Build OK — ${data.elf_path || `build/${activeApp}.elf`}`, 'ok');
+      clog(`Build OK ✅  ${activeApp}`, 'sys');
+      return true;
+    } else {
+      appendLog('buildLog', '❌ Build failed — check errors above', 'err');
+      clog('Build failed ❌', 'err');
+      return false;
+    }
+  } catch(e) {
+    appendLog('buildLog', `❌ ${e.message}`, 'err');
+    appendLog('buildLog', 'Is veemu-apiserver running on :8080?', 'warn');
+    clog('Build error: ' + e.message, 'err');
+    return false;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('btnBuild').onclick = doBuild;
+
+// ──────────────────────────────────────
+// FLASH — POST /flash-app {app}
+// Server reads the already-built ELF from disk (no file upload needed)
+// No page refresh required — sessions are always replaced in-place
+// ──────────────────────────────────────
+async function doFlashApp(elfPath) {
+  switchTab('flash');
+  clearCurrent();
+  const elf = elfPath || `build/${activeApp}.elf`;
+  appendLog('flashLog', `Flashing: veemu-app/${elf}`, 'fl');
+  appendLog('flashLog', `POST /flash-app → veemu-api...`, 'cmd');
+  setStatus('booting');
+  // Stop existing session cleanly
+  if (sessionId) {
+    try { await fetch(`${API}/sessions/${sessionId}`, {method:'DELETE'}); } catch(_){}
+    if (ws) { ws.close(); ws = null; }
+    sessionId = null;
+  }
+  try {
+    const resp = await fetch(`${API}/flash-app`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ app: activeApp, elf_path: elf, board: 'stm32f401re' })
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status} — ${await resp.text()}`);
+    const data = await resp.json();
+    onSessionStarted(data);
+  } catch(err) {
+    appendLog('flashLog', `❌ ${err.message}`, 'err');
+    appendLog('flashLog', 'Is veemu-apiserver running on :8080?', 'warn');
+    clog(`Flash failed: ${err.message}`, 'err');
+    setStatus('error');
+  }
+}
+
+function onSessionStarted(data) {
+  sessionId = data.session_id;
+  lastKnownSessionId = sessionId;
+  document.getElementById('sessionBadge').textContent = sessionId.slice(0,8)+'...';
+  document.getElementById('sessionBadge').classList.add('active');
+  document.getElementById('btnStop').style.display = 'flex';
+  document.getElementById('termSyncBadge').style.display = 'none';
+  appendLog('flashLog', `✅ Session: ${sessionId}`, 'ok');
+  appendLog('flashLog', `Board: ${data.board_id || 'stm32f401re'} — ${data.status || 'running'}`, 'ok');
+  setStatus('running');
+  setPowerLEDs(true);
+  connectWS(sessionId);
+}
+
+document.getElementById('btnFlash').onclick = () => doFlashApp();
+
+// Build + Flash in one click
+document.getElementById('btnBuildFlash').onclick = async () => {
+  const ok = await doBuild();
+  if (ok) await doFlashApp();
+};
+
+// ──────────────────────────────────────
+// WEBSOCKET
+// ──────────────────────────────────────
+function connectWS(sid) {
+  if(ws) ws.close();
+  ws = new WebSocket(`${WS_URL}?session=${sid}`);
+  ws.onopen = () => { appendLog('flashLog','WS connected','ok'); clog('WebSocket connected','inf'); };
+  ws.onmessage = e => {
+    const ev = JSON.parse(e.data);
+    if (ev.type==='connected') clog(`Live stream — ${ev.board_id}`,'sys');
+    else if (ev.type==='uart') { ev.data.replace(/\r/g,'').split('\n').filter(Boolean).forEach(l=>clog(l)); if(currentTab!=='console') document.getElementById('tab-console').classList.add('has-data'); }
+    else if (ev.type==='gpio') {
+      // Normalize port: "gpioa" → "A"
+      const port = ev.port ? ev.port.replace('gpio','').toUpperCase() : ev.port;
+      setGPIO(port, ev.pin, ev.state);
+      // GPIO events go to flash log (not console) to keep console clean for UART
+      appendLog('flashLog', `GPIO P${port}${ev.pin} → ${ev.state?'HIGH':'LOW'}`, 'inf');
+    }
+    else if (ev.type==='session_ended') { clog('Session ended','sys'); setStatus('idle'); setPowerLEDs(false); }
+  };
+  ws.onclose = () => clog('WebSocket closed','inf');
+  ws.onerror = () => clog('WebSocket error','err');
+}
+
+// ──────────────────────────────────────
+// STOP
+// ──────────────────────────────────────
+document.getElementById('btnStop').onclick = async () => {
+  if(!sessionId) return;
+  try {
+    await fetch(`${API}/sessions/${sessionId}`,{method:'DELETE'});
+    if(ws) ws.close();
+    sessionId=null;
+    document.getElementById('sessionBadge').textContent='NO SESSION';
+    document.getElementById('sessionBadge').classList.remove('active');
+    document.getElementById('btnStop').style.display='none';
+    setStatus('idle'); setPowerLEDs(false);
+    clog('Session stopped','sys');
+    appendLog('flashLog','Session stopped','warn');
+  } catch(e) { clog('Stop failed: '+e.message,'err'); }
+};
+
+// ──────────────────────────────────────
+// STATUS
+// ──────────────────────────────────────
+function setStatus(s) {
+  document.getElementById('statusDot').className='status-dot '+s;
+  document.getElementById('statusText').textContent=s.charAt(0).toUpperCase()+s.slice(1);
+}
+
+// ──────────────────────────────────────
+// AI
+// ──────────────────────────────────────
+document.getElementById('btnAI').onclick = () => document.getElementById('aiPanel').classList.toggle('on');
+document.getElementById('aiInput').addEventListener('keydown', e => { if(e.key==='Enter') sendAI(); });
+async function sendAI() {
+  const input=document.getElementById('aiInput'); const msg=input.value.trim(); if(!msg) return;
+  input.value=''; addAIMsg(msg,'user');
+  const code=monacoEditor?monacoEditor.getValue():'';
+  try {
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:`Expert STM32 embedded assistant for Veemu. Board: STM32F401RE Nucleo.\nCurrent code:\n\`\`\`c\n${code.slice(0,1000)}\n\`\`\`\nAnswer concisely.`,messages:[{role:'user',content:msg}]})});
+    const d=await r.json(); addAIMsg(d.content?.[0]?.text||'No response','ai');
+  } catch(e) { addAIMsg('AI unavailable.','ai'); }
+}
+function addAIMsg(text,role) { const d=document.createElement('div'); d.className=`ai-msg ${role}`; d.textContent=text; const m=document.getElementById('aiMsgs'); m.appendChild(d); m.scrollTop=m.scrollHeight; }
+
+// ──────────────────────────────────────
+// UTILS
+// ──────────────────────────────────────
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+function pad(n) { return String(n).padStart(2,'0'); }
+function fmtTime() { const n=new Date(); return `${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`; }
+function fmtTimeFull() { const n=new Date(); return `${fmtTime()}.${String(n.getMilliseconds()).padStart(3,'0')}`; }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ──────────────────────────────────────
+// FIRMWARE EMULATOR — uart_debug.c
+// Exact behavioral replica of uart_debug.c
+// timing: delay_ms(n) → real n ms via setTimeout chain
+// GPIO_SET/RESET → setGPIO + visual LED
+// printf → clog to Console tab
+// ──────────────────────────────────────
+// REAL HARDWARE — B1 + RST → API
+// ──────────────────────────────────────
+
+// Animate B1 press visual
+function animateB1Press() {
+  const inner = document.getElementById('boardBtnInner');
+  const outer = document.getElementById('boardBtn');
+  if (inner) { inner.setAttribute('fill','#3a4060'); inner.setAttribute('stroke','var(--amber)'); }
+  if (outer) { outer.setAttribute('stroke','var(--amber)'); }
+  setTimeout(() => {
+    if (inner) { inner.setAttribute('fill','#252b3a'); inner.setAttribute('stroke','#555'); }
+    if (outer) { outer.setAttribute('stroke','#444'); }
+  }, 120);
+}
+
+// B1 (PC13, active LOW) — inject GPIO input to running session
+document.getElementById('boardBtn').addEventListener('mousedown', () => {
+  if (!sessionId) { clog('No active session — flash firmware first', 'err'); return; }
+  animateB1Press();
+  fetch(`${API}/gpio_input?session=${sessionId}`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({port:'gpioc', pin:13, state:false})
+  }).then(() => clog('[B1] Pressed — PC13 LOW', 'inf')).catch(e => clog('B1 error: '+e.message,'err'));
+});
+document.getElementById('boardBtn').addEventListener('mouseup', () => {
+  if (!sessionId) return;
+  fetch(`${API}/gpio_input?session=${sessionId}`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({port:'gpioc', pin:13, state:true})
+  }).catch(() => {});
+});
+document.addEventListener('mouseup', () => {
+  // safety — nothing needed, server handles state
+});
+
+// RST — stop current session and reflash same app
+document.getElementById('boardRst').addEventListener('click', async () => {
+  const rst = document.getElementById('boardRstInner');
+  if (rst) { rst.setAttribute('fill','#4a1a1a'); setTimeout(()=>rst.setAttribute('fill','#252b3a'),200); }
+  clog('[RST] Reset — reflashing...', 'sys');
+  await doFlashApp();
+});
+
+// ──────────────────────────────────────
+// TERMINAL-SESSION POLLING
+// If user runs `make APP=x flash` from terminal, a new session
+// appears on the server. We poll GET /latest-session every 3s.
+// If we see a session ID we don't know about, show the sync badge.
+// Clicking the badge connects the WS to that session automatically.
+// ──────────────────────────────────────
+async function pollForExternalSession() {
+  try {
+    const resp = await fetch(`${API}/latest-session`, { signal: AbortSignal.timeout(2000) });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const latest = data.session_id;
+    if (!latest) return;
+    if (latest !== sessionId && latest !== lastKnownSessionId) {
+      // New session flashed from terminal — show badge
+      lastKnownSessionId = latest;
+      const badge = document.getElementById('termSyncBadge');
+      badge.style.display = 'flex';
+      badge.title = `Terminal session ${latest.slice(0,8)}... — click to connect`;
+    }
+  } catch(_) { /* server down or no endpoint — ignore */ }
+}
+
+async function connectLatestSession() {
+  try {
+    const resp = await fetch(`${API}/latest-session`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (!data.session_id) return;
+    // Stop current session WS if any
+    if (ws) { ws.close(); ws = null; }
+    sessionId = data.session_id;
+    lastKnownSessionId = sessionId;
+    document.getElementById('sessionBadge').textContent = sessionId.slice(0,8)+'...';
+    document.getElementById('sessionBadge').classList.add('active');
+    document.getElementById('btnStop').style.display = 'flex';
+    document.getElementById('termSyncBadge').style.display = 'none';
+    setStatus('running');
+    setPowerLEDs(true);
+    switchTab('flash');
+    appendLog('flashLog', `↗ Connected to terminal session: ${sessionId}`, 'ok');
+    appendLog('flashLog', `Board: ${data.board_id || 'stm32f401re'}`, 'ok');
+    clog(`↗ Synced terminal session ${sessionId.slice(0,8)}`, 'sys');
+    connectWS(sessionId);
+  } catch(e) { clog('Sync failed: ' + e.message, 'err'); }
+}
+
+// Poll every 3s when we don't have an active session, every 5s when we do
+setInterval(() => {
+  if (!sessionId) pollForExternalSession();
+}, 3000);
+setInterval(() => {
+  if (sessionId) pollForExternalSession();
+}, 5000);
+
+// ──────────────────────────────────────
+// INIT
+// ──────────────────────────────────────
+buildPins();
+buildFileTree(activeApp);
+
+// Auto-load the active app's main .c file once Monaco is ready
+// We retry until monacoEditor is available
+(function waitForMonaco() {
+  if (!monacoEditor) { setTimeout(waitForMonaco, 200); return; }
+  const activeItem = getFileTree(activeApp).find(f => f.active);
+  const activeEl   = document.querySelector('#fileTree .tree-item.active');
+  if (activeItem && activeEl) loadFile(activeItem, activeEl);
+})();
+
+// Initial poll right away
+setTimeout(pollForExternalSession, 1500);
+
+clog('Veemu ready — STM32F401RE virtual workstation', 'sys');
+clog('Select app → Edit → Build → Flash  (or Ctrl+S to save)', 'inf');
+clog('Terminal flash detected automatically — no refresh needed', 'inf');
+</script>
+</body>
+</html>
