@@ -1,0 +1,71 @@
+{
+  "board":   "stm32f401re",
+  "family":  "stm32f4",
+  "cpu":     "cortex-m4",
+  "thumb":   true,
+  "memory": {
+    "flash": { "base": "0x08000000", "size": 524288  },
+    "sram":  { "base": "0x20000000", "size": 98304   }
+  },
+  "peripherals": {
+    "rcc":    { "base": "0x40023800", "size": 1024 },
+
+    "gpioa":  { "base": "0x40020000", "size": 1024 },
+    "gpiob":  { "base": "0x40020400", "size": 1024 },
+    "gpioc":  { "base": "0x40020800", "size": 1024 },
+    "gpiod":  { "base": "0x40020C00", "size": 1024 },
+    "gpioe":  { "base": "0x40021000", "size": 1024 },
+    "gpioh":  { "base": "0x40021C00", "size": 1024 },
+
+    "usart1": { "base": "0x40011000", "size": 1024 },
+    "usart2": { "base": "0x40004400", "size": 1024 },
+    "usart6": { "base": "0x40011400", "size": 1024 },
+
+    "tim1":   { "base": "0x40010000", "size": 1024 },
+    "tim2":   { "base": "0x40000000", "size": 1024 },
+    "tim3":   { "base": "0x40000400", "size": 1024 },
+    "tim4":   { "base": "0x40000800", "size": 1024 },
+    "tim5":   { "base": "0x40000C00", "size": 1024 },
+
+    "spi1":   { "base": "0x40013000", "size": 1024 },
+    "spi2":   { "base": "0x40003800", "size": 1024 },
+    "spi3":   { "base": "0x40003C00", "size": 1024 },
+
+    "i2c1":   { "base": "0x40005400", "size": 1024 },
+    "i2c2":   { "base": "0x40005800", "size": 1024 },
+    "i2c3":   { "base": "0x40005C00", "size": 1024 }
+  },
+  "pins": {
+    "led":      { "port": "gpioa", "pin": 5  },
+    "btn":      { "port": "gpioc", "pin": 13 },
+    "uart2_tx": { "port": "gpioa", "pin": 2  },
+    "uart2_rx": { "port": "gpioa", "pin": 3  },
+    "spi1_sck": { "port": "gpioa", "pin": 5  },
+    "spi1_miso":{ "port": "gpioa", "pin": 6  },
+    "spi1_mosi":{ "port": "gpioa", "pin": 7  },
+    "i2c1_scl": { "port": "gpiob", "pin": 8  },
+    "i2c1_sda": { "port": "gpiob", "pin": 9  }
+  },
+  "interrupts": {
+    "tim2":  { "irq": 28 },
+    "tim3":  { "irq": 29 },
+    "tim4":  { "irq": 30 },
+    "tim5":  { "irq": 50 },
+    "usart1":{ "irq": 37 },
+    "usart2":{ "irq": 38 },
+    "i2c1_ev":{ "irq": 31 },
+    "i2c1_er":{ "irq": 32 },
+    "spi1":  { "irq": 35 }
+  },
+  "clock": {
+    "hsi_hz":  16000000,
+    "max_hz":  84000000
+  },
+  "platform": {
+    "console_uart": "usart2",
+    "console_baud":  115200,
+    "led":           { "port": "gpioa", "pin": 5  },
+    "btn":           { "port": "gpioc", "pin": 13 },
+    "systick_ms":    1
+  }
+}

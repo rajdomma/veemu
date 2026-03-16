@@ -1,0 +1,11 @@
+# Build artifacts
+build/
+firmware/build/
+firmware/bin/
+
+# macOS
+.DS_Store
+
+# Editor
+*.swp
+*.orig

@@ -14,3 +14,7 @@ veemu-engine/unicorn/build/
 
 # Go
 veemu-api/vendor/
+
+# Unicorn engine (third-party dependency — build separately)
+unicorn/
+veemu-engine/unicorn
