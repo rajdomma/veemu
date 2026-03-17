@@ -29,6 +29,7 @@
 int main(void)
 {
     printf("[BOOT] Hello from Veemu vHW!\n");
+    printf("[BOOT] Hello from Veemu vHW! v2.0\n");
     printf("[BOOT] platform_init done — UART, SysTick, GPIO ready\n");
 
 #if defined(APP_BLINK)

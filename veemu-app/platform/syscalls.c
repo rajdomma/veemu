@@ -59,7 +59,7 @@ static void _print_hex_width(uint32_t v, int width, char pad, int upper)
     const char *lo = "0123456789abcdef";
     const char *hi = "0123456789ABCDEF";
     const char *d  = upper ? hi : lo;
-    char buf[8]; int i = 0;
+    char buf[12]; int i = 0;
     if (v == 0 && width == 0) { _uart_putc_raw('0'); return; }
     uint32_t t = v;
     while (t) { buf[i++] = d[t % 16]; t /= 16; }

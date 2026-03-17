@@ -93,6 +93,11 @@ void ledpatterns_app(void)
     printf("[MODE] Active: %s\n", MODE_NAMES[g_mode]);
 
     uint32_t loop = 0;
+    int a = 4, b =3;
+    int c = a + b;
+    
+    printf("Addtion c = %d\n", c);
+    printf("Sub = %d\n", a - b);
 
     while (1) {
         loop++;

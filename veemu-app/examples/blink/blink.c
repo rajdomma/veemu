@@ -1,29 +1,34 @@
 /**
- * blink.c — Simple GPIO blink
+ * blink.c — Simple LED Blink
  *
- * Toggles PA5 (LD2) 10 times (5 ON/OFF cycles) then returns.
- * No UART. No SysTick. Pure GPIO.
+ * Blinks PA5 (LD2) continuously at 1Hz (500ms ON, 500ms OFF).
+ * Uses platform HW API — no direct register access.
  *
  * Call from main(): blink_app();
  */
-#include "../../platform/stm32f401re.h"
+
 #include "blink.h"
+#include "../../platform/gpio.h"
+#include "../../platform/systick.h"
+#include <stdio.h>
 
 void blink_app(void)
 {
-    /* Enable GPIOA clock */
-    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+    printf("[BLINK] Starting — PA5 blink 1Hz\n");
 
-    /* PA5 = push-pull output */
-    GPIOA->MODER  &= ~(0x3UL << (5 * 2));
-    GPIOA->MODER  |=  (0x1UL << (5 * 2));
-    GPIOA->OTYPER &= ~(1UL << 5);
+    uint32_t count = 0;
 
-    /* Toggle PA5 10 times (5 ON/OFF cycles) */
-    for (int i = 0; i < 10; i++) {
-        if (i & 1)
-            GPIOA->BSRR = (1UL << (5 + 16));  /* OFF */
-        else
-            GPIOA->BSRR = (1UL << 5);          /* ON  */
+    while (1) {
+        gpio_led_on();
+        delay_ms(500);
+
+        gpio_led_off();
+        delay_ms(500);
+
+        count++;
+        if (count % 10 == 0)
+            printf("[BLINK] %lu blinks, tick=%lums\n",
+                (unsigned long)count,
+                (unsigned long)g_tick);
     }
 }
